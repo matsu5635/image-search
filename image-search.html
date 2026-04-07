@@ -53,12 +53,8 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
   display: flex; align-items: center; justify-content: center;
   position: relative; overflow: hidden;
 }
-#preview {
-  width: 100%; height: 100%; object-fit: cover; display: none;
-}
-#capturedImg {
-  width: 100%; height: 100%; object-fit: cover; display: none;
-}
+#preview { width: 100%; height: 100%; object-fit: cover; display: none; }
+#capturedImg { width: 100%; height: 100%; object-fit: cover; display: none; }
 .camera-placeholder {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -67,9 +63,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
 .camera-icon { font-size: 64px; }
 .camera-hint { font-size: 14px; font-weight: 600; }
 
-.camera-btns {
-  display: flex; border-top: 2px solid var(--border);
-}
+.camera-btns { display: flex; border-top: 2px solid var(--border); }
 .cam-btn {
   flex: 1; padding: 16px;
   border: none; background: var(--bg);
@@ -84,8 +78,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
 .result-card {
   background: var(--card); border-radius: 16px;
   border: 2px solid var(--border);
-  overflow: hidden; margin-bottom: 16px;
-  display: none;
+  overflow: hidden; margin-bottom: 16px; display: none;
 }
 .result-card.show { display: block; }
 .result-title {
@@ -97,19 +90,15 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
 
 .candidate {
   display: flex; align-items: center; gap: 12px;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
   cursor: pointer; transition: background .15s;
 }
 .candidate:last-child { border-bottom: none; }
 .candidate:active { background: #e8efff; }
 .candidate.selected { background: #e8efff; border-left: 4px solid var(--blue); }
-
 .cand-img {
-  width: 60px; height: 60px;
-  border-radius: 10px; object-fit: cover;
-  border: 1px solid var(--border);
-  flex-shrink: 0; background: var(--bg);
+  width: 60px; height: 60px; border-radius: 10px; object-fit: cover;
+  border: 1px solid var(--border); flex-shrink: 0; background: var(--bg);
 }
 .cand-info { flex: 1; }
 .cand-code { font-size: 18px; font-weight: 900; color: var(--text); }
@@ -126,8 +115,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
   width: 100%; padding: 18px;
   border: none; border-top: 2px solid var(--border);
   background: var(--blue); color: #fff;
-  font-size: 18px; font-weight: 900; cursor: pointer;
-  display: none;
+  font-size: 18px; font-weight: 900; cursor: pointer; display: none;
 }
 .decide-btn.show { display: block; }
 .decide-btn:active { background: #0f4fd6; }
@@ -171,7 +159,6 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
   </div>
 
   <div class="scroll">
-
     <div class="lbl">製品を撮影してください</div>
     <div class="camera-card">
       <div class="camera-area" id="cameraArea">
@@ -192,8 +179,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
       width:100%; padding:18px; margin-bottom:16px;
       border:none; border-radius:16px;
       background:var(--blue); color:#fff;
-      font-size:18px; font-weight:900; cursor:pointer;
-      display:none;
+      font-size:18px; font-weight:900; cursor:pointer; display:none;
     " onclick="doSearch()">🔍 この画像で検索</button>
 
     <div class="lbl" id="resultLbl" style="display:none;">候補を選択してください</div>
@@ -205,7 +191,6 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
     <button class="decide-btn" id="decideBtn" onclick="decide()">
       ✅ この製品コードで入力する
     </button>
-
   </div>
 </div>
 
@@ -218,24 +203,36 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
 <div class="toast" id="toast"></div>
 
 <script>
-// ── GAS URL ──────────────────────────────────────────
-const API = 'https://script.google.com/macros/s/AKfycbxvtJIqApBEx1aGUgDYe5qMoR8kKhOGi4MsKijc6lBQ-5Rs-TLJb0LHndx310y6zNLD/exec';
-
-// ── 製品入力アプリのURL ──────────────────────────────
-const APP_URL = 'https://matsu5635.github.io/product-input/app.html';
+// ── 設定 ─────────────────────────────────────────────
+const GEMINI_KEY = 'AIzaSyC6ymhXGeS5kwavE8AsJSfcykAu7Fll4Mc';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_KEY;
+const GAS_URL    = 'https://script.google.com/macros/s/AKfycbxvtJIqApBEx1aGUgDYe5qMoR8kKhOGi4MsKijc6lBQ-5Rs-TLJb0LHndx310y6zNLD/exec';
+const APP_URL    = 'https://matsu5635.github.io/product-input/app.html';
 
 let capturedBase64 = '';
 let capturedMime   = 'image/jpeg';
 let selectedCode   = '';
 let cameraStream   = null;
+let fileList       = [];  // Driveのファイル名一覧
 
-// ── カメラ起動 ──────────────────────────────────────
+// ── 起動時にファイル名一覧を取得 ─────────────────────
+window.addEventListener('DOMContentLoaded', async function() {
+  try {
+    var res  = await fetch(GAS_URL + '?action=getFiles');
+    var json = await res.json();
+    if (json.ok) fileList = json.files || [];
+  } catch(e) {
+    console.log('ファイル一覧取得失敗:', e.message);
+  }
+});
+
+// ── カメラ ───────────────────────────────────────────
 async function openCamera() {
   try {
     cameraStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment' }
     });
-    const video = document.getElementById('preview');
+    var video = document.getElementById('preview');
     video.srcObject = cameraStream;
     video.style.display = 'block';
     document.getElementById('placeholder').style.display = 'none';
@@ -247,14 +244,14 @@ async function openCamera() {
 }
 
 function capture(video) {
-  const canvas = document.createElement('canvas');
+  var canvas = document.createElement('canvas');
   canvas.width  = video.videoWidth;
   canvas.height = video.videoHeight;
   canvas.getContext('2d').drawImage(video, 0, 0);
   capturedBase64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
   capturedMime   = 'image/jpeg';
-  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
-  const img = document.getElementById('capturedImg');
+  if (cameraStream) { cameraStream.getTracks().forEach(function(t) { t.stop(); }); cameraStream = null; }
+  var img = document.getElementById('capturedImg');
   img.src = 'data:image/jpeg;base64,' + capturedBase64;
   img.style.display = 'block';
   document.getElementById('preview').style.display = 'none';
@@ -265,19 +262,16 @@ function capture(video) {
   selectedCode = '';
 }
 
-// ── アルバム ────────────────────────────────────────
-function openAlbum() {
-  document.getElementById('fileInput').click();
-}
+function openAlbum() { document.getElementById('fileInput').click(); }
 
 function onFileSelected(input) {
   if (!input.files || !input.files[0]) return;
-  const file   = input.files[0];
+  var file   = input.files[0];
   capturedMime = file.type || 'image/jpeg';
-  const reader = new FileReader();
+  var reader = new FileReader();
   reader.onload = function(e) {
     capturedBase64 = e.target.result.split(',')[1];
-    const img = document.getElementById('capturedImg');
+    var img = document.getElementById('capturedImg');
     img.src = e.target.result;
     img.style.display = 'block';
     document.getElementById('preview').style.display = 'none';
@@ -291,19 +285,45 @@ function onFileSelected(input) {
   reader.readAsDataURL(file);
 }
 
-// ── 検索（POSTで画像送信）───────────────────────────
+// ── 検索（Gemini APIを直接呼ぶ）────────────────────
 async function doSearch() {
   if (!capturedBase64) { toast('画像を撮影してください', 'err'); return; }
   showOv('AIが画像を分析中...\n少々お待ちください');
   try {
-    const res  = await fetch(API, {
+    // ファイル名一覧をGeminiに渡して候補を絞る
+    var names = fileList.map(function(f) { return f.name; }).join('\n');
+    if (!names) { toast('製品リストが取得できていません', 'err'); hideOv(); return; }
+
+    var body = {
+      contents: [{
+        parts: [
+          { inline_data: { mime_type: capturedMime, data: capturedBase64 } },
+          { text: 'この画像の製品と似ていると思われる製品コードを以下のリストから5つ以内で選んでください。製品コードのみをカンマ区切りで返してください。他の文字は一切含めないでください。\n\n製品コードリスト:\n' + names }
+        ]
+      }]
+    };
+
+    var res  = await fetch(GEMINI_URL, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ image: capturedBase64, mime: capturedMime })
+      body:    JSON.stringify(body)
     });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error);
-    showCandidates(json.candidates);
+    var json = await res.json();
+
+    var text  = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    var codes = text.trim().replace(/\s/g, '').split(',').map(function(c) { return c.trim(); }).filter(function(c) { return c; });
+
+    if (codes.length === 0) { toast('候補が見つかりませんでした', 'err'); hideOv(); return; }
+
+    // 候補の画像をGAS経由で取得
+    var candidates = [];
+    for (var i = 0; i < codes.length; i++) {
+      var code     = codes[i];
+      var fileInfo = fileList.find(function(f) { return f.name === code; });
+      candidates.push({ code: code, fileId: fileInfo ? fileInfo.id : '', name: '' });
+    }
+
+    showCandidates(candidates);
   } catch(e) {
     toast('エラー: ' + e.message, 'err');
   }
@@ -315,13 +335,18 @@ function showCandidates(candidates) {
   if (!candidates || candidates.length === 0) {
     toast('候補が見つかりませんでした', 'err'); return;
   }
-  const list = document.getElementById('candidateList');
+  var list = document.getElementById('candidateList');
   list.innerHTML = '';
   candidates.forEach(function(c) {
-    const div = document.createElement('div');
+    var div = document.createElement('div');
     div.className    = 'candidate';
     div.dataset.code = c.code;
-    const imgSrc = c.image ? 'data:' + c.mime + ';base64,' + c.image : '';
+
+    // Drive画像のサムネイル（fileIdがあれば表示）
+    var imgSrc = c.fileId
+      ? 'https://drive.google.com/thumbnail?id=' + c.fileId + '&sz=w120'
+      : '';
+
     div.innerHTML =
       '<img class="cand-img" src="' + imgSrc + '" onerror="this.style.display=\'none\'">' +
       '<div class="cand-info">' +
@@ -329,6 +354,7 @@ function showCandidates(candidates) {
         '<div class="cand-name">' + (c.name || '－') + '</div>' +
       '</div>' +
       '<div class="cand-check">✓</div>';
+
     div.onclick = function() { selectCandidate(c.code); };
     list.appendChild(div);
   });
@@ -345,7 +371,6 @@ function selectCandidate(code) {
   document.getElementById('decideBtn').textContent = '✅ ' + code + ' を入力する';
 }
 
-// ── 決定 → 製品入力アプリへ ─────────────────────────
 function decide() {
   if (!selectedCode) { toast('候補を選択してください', 'err'); return; }
   window.location.href = APP_URL + '?code=' + encodeURIComponent(selectedCode);
