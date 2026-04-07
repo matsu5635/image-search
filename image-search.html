@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>画像で製品検索</title>
+<style>
+:root {
+  --blue:   #1565ff;
+  --green:  #16a34a;
+  --red:    #dc2626;
+  --orange: #f97316;
+  --bg:     #eef1f7;
+  --card:   #ffffff;
+  --border: #b8c0d8;
+  --text:   #111827;
+  --sub:    #6b7280;
+}
+*, *::before, *::after {
+  box-sizing: border-box; margin: 0; padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  font-family: -apple-system, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+}
+html, body { height: 100%; background: var(--bg); color: var(--text); }
+#app { display: flex; flex-direction: column; height: 100%; }
+
+.hd {
+  background: var(--card); border-bottom: 2px solid var(--border);
+  padding: 16px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.hd-title { font-size: 20px; font-weight: 800; }
+
+.scroll { flex: 1; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch; }
+
+.lbl {
+  font-size: 12px; font-weight: 800; color: var(--sub);
+  text-transform: uppercase; letter-spacing: .1em;
+  margin-bottom: 8px; padding-left: 2px;
+}
+
+/* カメラカード */
+.camera-card {
+  background: var(--card); border-radius: 16px;
+  border: 2px solid var(--border);
+  overflow: hidden; margin-bottom: 16px;
+}
+
+.camera-area {
+  width: 100%; aspect-ratio: 4/3;
+  background: #1a1d23;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+}
+
+#preview {
+  width: 100%; height: 100%;
+  object-fit: cover; display: none;
+}
+
+#capturedImg {
+  width: 100%; height: 100%;
+  object-fit: cover; display: none;
+}
+
+.camera-placeholder {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px; color: #4b5563;
+}
+
+.camera-icon { font-size: 64px; }
+.camera-hint { font-size: 14px; font-weight: 600; }
+
+.camera-btns {
+  display: flex; gap: 0;
+  border-top: 2px solid var(--border);
+}
+
+.cam-btn {
+  flex: 1; padding: 16px;
+  border: none; background: var(--bg);
+  font-size: 15px; font-weight: 800; color: var(--blue);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.cam-btn:first-child { border-right: 1px solid var(--border); }
+.cam-btn:active { background: #e0e8ff; }
+.cam-btn.orange { color: var(--orange); }
+.cam-btn:disabled { color: var(--sub); cursor: not-allowed; }
+
+/* 候補カード */
+.result-card {
+  background: var(--card); border-radius: 16px;
+  border: 2px solid var(--border);
+  overflow: hidden; margin-bottom: 16px;
+  display: none;
+}
+.result-card.show { display: block; }
+
+.result-title {
+  font-size: 12px; font-weight: 800; color: var(--sub);
+  text-transform: uppercase; letter-spacing: .08em;
+  padding: 12px 16px;
+  background: #f5f7fc;
+  border-bottom: 2px solid var(--border);
+}
+
+.candidate {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .15s;
+}
+.candidate:last-child { border-bottom: none; }
+.candidate:active { background: #e8efff; }
+.candidate.selected { background: #e8efff; border-left: 4px solid var(--blue); }
+
+.cand-img {
+  width: 60px; height: 60px;
+  border-radius: 10px; object-fit: cover;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
+.cand-info { flex: 1; }
+.cand-code { font-size: 18px; font-weight: 900; color: var(--text); }
+.cand-name { font-size: 13px; color: var(--sub); margin-top: 2px; font-weight: 600; }
+
+.cand-check {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: #fff;
+  flex-shrink: 0;
+}
+.candidate.selected .cand-check {
+  background: var(--blue); border-color: var(--blue);
+}
+
+/* 決定ボタン */
+.decide-btn {
+  width: 100%; padding: 18px;
+  border: none; border-top: 2px solid var(--border);
+  background: var(--blue); color: #fff;
+  font-size: 18px; font-weight: 900;
+  cursor: pointer;
+  display: none;
+}
+.decide-btn.show { display: block; }
+.decide-btn:active { background: #0f4fd6; }
+
+/* hidden file input */
+#fileInput { display: none; }
+
+/* オーバーレイ */
+.ov {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(238,241,247,.92);
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center; gap: 18px;
+}
+.ov.show { display: flex; }
+.ov-msg { font-size: 18px; font-weight: 700; color: var(--sub); text-align: center; padding: 0 20px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.ring {
+  width: 56px; height: 56px;
+  border: 6px solid var(--border); border-top-color: var(--blue);
+  border-radius: 50%; animation: spin .75s linear infinite;
+}
+
+/* トースト */
+.toast {
+  position: fixed; bottom: 40px; left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: #111827ee; color: #fff;
+  padding: 16px 28px; border-radius: 100px;
+  font-size: 16px; font-weight: 700;
+  white-space: pre-line; text-align: center; max-width: 86vw; line-height: 1.5;
+  opacity: 0; transition: opacity .25s, transform .25s;
+  pointer-events: none; z-index: 450;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.ok   { background: #16a34aee; }
+.toast.err  { background: #dc2626ee; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hd">
+    <div class="hd-title">🔍 画像で製品検索</div>
+  </div>
+
+  <div class="scroll">
+
+    <!-- カメラ -->
+    <div class="lbl">製品を撮影してください</div>
+    <div class="camera-card">
+      <div class="camera-area" id="cameraArea">
+        <video id="preview" playsinline autoplay muted></video>
+        <img id="capturedImg" />
+        <div class="camera-placeholder" id="placeholder">
+          <div class="camera-icon">📷</div>
+          <div class="camera-hint">カメラまたはアルバムから選択</div>
+        </div>
+      </div>
+      <div class="camera-btns">
+        <button class="cam-btn" onclick="openCamera()">📷 カメラ</button>
+        <button class="cam-btn orange" onclick="openAlbum()">🖼 アルバム</button>
+      </div>
+    </div>
+
+    <!-- 検索ボタン -->
+    <button id="searchBtn" style="
+      width:100%; padding:18px; margin-bottom:16px;
+      border:none; border-radius:16px;
+      background:var(--blue); color:#fff;
+      font-size:18px; font-weight:900; cursor:pointer;
+      display:none;
+    " onclick="doSearch()">🔍 この画像で検索</button>
+
+    <!-- 候補一覧 -->
+    <div class="lbl" id="resultLbl" style="display:none;">候補を選択してください</div>
+    <div class="result-card" id="resultCard">
+      <div class="result-title">🤖 AIが選んだ候補</div>
+      <div id="candidateList"></div>
+    </div>
+
+    <!-- 決定ボタン -->
+    <button class="decide-btn" id="decideBtn" onclick="decide()">
+      ✅ この製品コードで入力する
+    </button>
+
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" onchange="onFileSelected(this)" />
+
+<div class="ov" id="ov">
+  <div class="ring"></div>
+  <div class="ov-msg" id="ovMsg">AIが画像を分析中...<br>少々お待ちください</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbxvtJIqApBEx1aGUgDYe5qMoR8kKhOGi4MsKijc6lBQ-5Rs-TLJb0LHndx310y6zNLD/exec'; // ← デプロイ後のURLに変更
+
+let capturedBase64 = '';
+let capturedMime   = 'image/jpeg';
+let selectedCode   = '';
+let cameraStream   = null;
+
+// ── カメラ起動 ──────────────────────────────────────
+async function openCamera() {
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }
+    });
+    const video = document.getElementById('preview');
+    video.srcObject = cameraStream;
+    video.style.display = 'block';
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('capturedImg').style.display = 'none';
+
+    // タップで撮影
+    video.onclick = function() { capture(video); };
+  } catch(e) {
+    openAlbum();
+  }
+}
+
+function capture(video) {
+  const canvas = document.createElement('canvas');
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  capturedBase64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+  capturedMime   = 'image/jpeg';
+
+  // カメラ停止
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+
+  // プレビュー表示
+  const img = document.getElementById('capturedImg');
+  img.src = 'data:image/jpeg;base64,' + capturedBase64;
+  img.style.display = 'block';
+  video.style.display = 'none';
+
+  document.getElementById('searchBtn').style.display = 'block';
+  document.getElementById('resultCard').classList.remove('show');
+  document.getElementById('resultLbl').style.display = 'none';
+  document.getElementById('decideBtn').classList.remove('show');
+  selectedCode = '';
+}
+
+// ── アルバム ────────────────────────────────────────
+function openAlbum() {
+  document.getElementById('fileInput').click();
+}
+
+function onFileSelected(input) {
+  if (!input.files || !input.files[0]) return;
+  const file   = input.files[0];
+  capturedMime = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    capturedBase64 = e.target.result.split(',')[1];
+    const img = document.getElementById('capturedImg');
+    img.src = e.target.result;
+    img.style.display = 'block';
+    document.getElementById('preview').style.display = 'none';
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('searchBtn').style.display = 'block';
+    document.getElementById('resultCard').classList.remove('show');
+    document.getElementById('resultLbl').style.display = 'none';
+    document.getElementById('decideBtn').classList.remove('show');
+    selectedCode = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── 検索 ────────────────────────────────────────────
+async function doSearch() {
+  if (!capturedBase64) { toast('画像を撮影してください', 'err'); return; }
+  showOv('AIが画像を分析中...\n少々お待ちください');
+  try {
+    const url = API + '?action=search&mime=' + encodeURIComponent(capturedMime) +
+                '&image=' + encodeURIComponent(capturedBase64);
+    const res  = await fetch(url);
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error);
+    showCandidates(json.candidates);
+  } catch(e) {
+    toast('エラー: ' + e.message, 'err');
+  }
+  hideOv();
+}
+
+// ── 候補表示 ─────────────────────────────────────────
+function showCandidates(candidates) {
+  if (!candidates || candidates.length === 0) {
+    toast('候補が見つかりませんでした', 'err'); return;
+  }
+
+  const list = document.getElementById('candidateList');
+  list.innerHTML = '';
+
+  candidates.forEach(function(c) {
+    const div = document.createElement('div');
+    div.className = 'candidate';
+    div.dataset.code = c.code;
+
+    const imgSrc = c.image ? 'data:' + c.mime + ';base64,' + c.image : '';
+    div.innerHTML =
+      '<img class="cand-img" src="' + imgSrc + '" onerror="this.style.display=\'none\'">' +
+      '<div class="cand-info">' +
+        '<div class="cand-code">' + c.code + '</div>' +
+        '<div class="cand-name">' + (c.name || '－') + '</div>' +
+      '</div>' +
+      '<div class="cand-check">✓</div>';
+
+    div.onclick = function() { selectCandidate(c.code); };
+    list.appendChild(div);
+  });
+
+  document.getElementById('resultCard').classList.add('show');
+  document.getElementById('resultLbl').style.display = 'block';
+}
+
+function selectCandidate(code) {
+  selectedCode = code;
+  document.querySelectorAll('.candidate').forEach(function(el) {
+    el.classList.toggle('selected', el.dataset.code === code);
+  });
+  document.getElementById('decideBtn').classList.add('show');
+  document.getElementById('decideBtn').textContent = '✅ ' + code + ' を入力する';
+}
+
+// ── 決定 ────────────────────────────────────────────
+function decide() {
+  if (!selectedCode) { toast('候補を選択してください', 'err'); return; }
+  // 製品入力アプリのページに製品コードを渡す
+  const targetUrl = 'app.html?code=' + encodeURIComponent(selectedCode);
+  window.location.href = targetUrl;
+}
+
+// ── ヘルパー ─────────────────────────────────────────
+function showOv(m) { document.getElementById('ovMsg').innerHTML = m; document.getElementById('ov').classList.add('show'); }
+function hideOv()  { document.getElementById('ov').classList.remove('show'); }
+function toast(msg, type) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(el._t);
+  el._t = setTimeout(function() { el.className = 'toast'; }, 3500);
+}
+</script>
+</body>
+</html>
