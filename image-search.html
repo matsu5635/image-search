@@ -61,7 +61,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
   gap: 12px; color: #4b5563;
 }
 .camera-icon { font-size: 64px; }
-.camera-hint { font-size: 14px; font-weight: 600; }
+.camera-hint { font-size: 14px; font-weight: 600; color: #9ca3af; }
 
 .camera-btns { display: flex; border-top: 2px solid var(--border); }
 .cam-btn {
@@ -75,45 +75,69 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
 .cam-btn:active { background: #e0e8ff; }
 .cam-btn.orange { color: var(--orange); }
 
-.result-card {
+/* AI分析結果 */
+.analysis-card {
+  background: var(--card); border-radius: 16px;
+  border: 2px solid #a78bfa;
+  padding: 16px; margin-bottom: 16px;
+  display: none;
+}
+.analysis-card.show { display: block; }
+.analysis-title {
+  font-size: 12px; font-weight: 800; color: #7c3aed;
+  text-transform: uppercase; letter-spacing: .08em;
+  margin-bottom: 10px;
+}
+.analysis-text {
+  font-size: 14px; color: var(--text); line-height: 1.7;
+  background: #f5f3ff; border-radius: 10px; padding: 12px;
+}
+
+/* サンプル画像グリッド */
+.grid-card {
   background: var(--card); border-radius: 16px;
   border: 2px solid var(--border);
   overflow: hidden; margin-bottom: 16px; display: none;
 }
-.result-card.show { display: block; }
-.result-title {
+.grid-card.show { display: block; }
+.grid-title {
   font-size: 12px; font-weight: 800; color: var(--sub);
   text-transform: uppercase; letter-spacing: .08em;
   padding: 12px 16px; background: #f5f7fc;
   border-bottom: 2px solid var(--border);
 }
-
-.candidate {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 16px; border-bottom: 1px solid var(--border);
-  cursor: pointer; transition: background .15s;
+.img-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px; padding: 2px;
 }
-.candidate:last-child { border-bottom: none; }
-.candidate:active { background: #e8efff; }
-.candidate.selected { background: #e8efff; border-left: 4px solid var(--blue); }
-.cand-img {
-  width: 60px; height: 60px; border-radius: 10px; object-fit: cover;
-  border: 1px solid var(--border); flex-shrink: 0; background: var(--bg);
+.grid-item {
+  position: relative; aspect-ratio: 1;
+  cursor: pointer; overflow: hidden;
+  background: var(--bg);
 }
-.cand-info { flex: 1; }
-.cand-code { font-size: 18px; font-weight: 900; color: var(--text); }
-.cand-name { font-size: 13px; color: var(--sub); margin-top: 2px; font-weight: 600; }
-.cand-check {
-  width: 28px; height: 28px; border-radius: 50%;
-  border: 2px solid var(--border);
+.grid-item img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: opacity .15s;
+}
+.grid-item:active img { opacity: .7; }
+.grid-item.selected::after {
+  content: '✓';
+  position: absolute; inset: 0;
+  background: rgba(21,101,255,.6);
   display: flex; align-items: center; justify-content: center;
-  font-size: 14px; color: #fff; flex-shrink: 0;
+  font-size: 32px; color: #fff; font-weight: 900;
 }
-.candidate.selected .cand-check { background: var(--blue); border-color: var(--blue); }
+.grid-code {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(0,0,0,.6); color: #fff;
+  font-size: 11px; font-weight: 700;
+  padding: 3px 6px; text-align: center;
+}
 
 .decide-btn {
-  width: 100%; padding: 18px;
-  border: none; border-top: 2px solid var(--border);
+  width: 100%; padding: 18px; margin-bottom: 16px;
+  border: none; border-radius: 16px;
   background: var(--blue); color: #fff;
   font-size: 18px; font-weight: 900; cursor: pointer; display: none;
 }
@@ -129,7 +153,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
   align-items: center; justify-content: center; gap: 18px;
 }
 .ov.show { display: flex; }
-.ov-msg { font-size: 18px; font-weight: 700; color: var(--sub); text-align: center; padding: 0 20px; }
+.ov-msg { font-size: 16px; font-weight: 700; color: var(--sub); text-align: center; padding: 0 20px; line-height: 1.6; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .ring {
   width: 56px; height: 56px;
@@ -166,7 +190,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
         <img id="capturedImg" />
         <div class="camera-placeholder" id="placeholder">
           <div class="camera-icon">📷</div>
-          <div class="camera-hint">カメラまたはアルバムから選択</div>
+          <div class="camera-hint">タップして撮影 or アルバムから選択</div>
         </div>
       </div>
       <div class="camera-btns">
@@ -180,12 +204,18 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
       border:none; border-radius:16px;
       background:var(--blue); color:#fff;
       font-size:18px; font-weight:900; cursor:pointer; display:none;
-    " onclick="doSearch()">🔍 この画像で検索</button>
+    " onclick="doSearch()">🤖 AIで特徴を分析して検索</button>
 
-    <div class="lbl" id="resultLbl" style="display:none;">候補を選択してください</div>
-    <div class="result-card" id="resultCard">
-      <div class="result-title">🤖 AIが選んだ候補</div>
-      <div id="candidateList"></div>
+    <!-- AI分析結果 -->
+    <div class="analysis-card" id="analysisCard">
+      <div class="analysis-title">🤖 AIの分析結果</div>
+      <div class="analysis-text" id="analysisText"></div>
+    </div>
+
+    <!-- サンプル画像グリッド -->
+    <div class="grid-card" id="gridCard">
+      <div class="grid-title" id="gridTitle">サンプル画像から選んでください</div>
+      <div class="img-grid" id="imgGrid"></div>
     </div>
 
     <button class="decide-btn" id="decideBtn" onclick="decide()">
@@ -198,12 +228,11 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
 
 <div class="ov" id="ov">
   <div class="ring"></div>
-  <div class="ov-msg" id="ovMsg">AIが画像を分析中...<br>少々お待ちください</div>
+  <div class="ov-msg" id="ovMsg">AIが分析中...</div>
 </div>
 <div class="toast" id="toast"></div>
 
 <script>
-// ── 設定 ─────────────────────────────────────────────
 const GEMINI_KEY = 'AIzaSyC6ymhXGeS5kwavE8AsJSfcykAu7Fll4Mc';
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_KEY;
 const GAS_URL    = 'https://script.google.com/macros/s/AKfycbxvtJIqApBEx1aGUgDYe5qMoR8kKhOGi4MsKijc6lBQ-5Rs-TLJb0LHndx310y6zNLD/exec';
@@ -213,20 +242,18 @@ let capturedBase64 = '';
 let capturedMime   = 'image/jpeg';
 let selectedCode   = '';
 let cameraStream   = null;
-let fileList       = [];  // Driveのファイル名一覧
+let fileList       = [];
 
-// ── 起動時にファイル名一覧を取得 ─────────────────────
+// 起動時にファイル名一覧を取得
 window.addEventListener('DOMContentLoaded', async function() {
   try {
     var res  = await fetch(GAS_URL + '?action=getFiles');
     var json = await res.json();
     if (json.ok) fileList = json.files || [];
-  } catch(e) {
-    console.log('ファイル一覧取得失敗:', e.message);
-  }
+  } catch(e) {}
 });
 
-// ── カメラ ───────────────────────────────────────────
+// カメラ
 async function openCamera() {
   try {
     cameraStream = await navigator.mediaDevices.getUserMedia({
@@ -238,9 +265,7 @@ async function openCamera() {
     document.getElementById('placeholder').style.display = 'none';
     document.getElementById('capturedImg').style.display = 'none';
     video.onclick = function() { capture(video); };
-  } catch(e) {
-    openAlbum();
-  }
+  } catch(e) { openAlbum(); }
 }
 
 function capture(video) {
@@ -251,139 +276,135 @@ function capture(video) {
   capturedBase64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
   capturedMime   = 'image/jpeg';
   if (cameraStream) { cameraStream.getTracks().forEach(function(t) { t.stop(); }); cameraStream = null; }
-  var img = document.getElementById('capturedImg');
-  img.src = 'data:image/jpeg;base64,' + capturedBase64;
-  img.style.display = 'block';
-  document.getElementById('preview').style.display = 'none';
-  document.getElementById('searchBtn').style.display = 'block';
-  document.getElementById('resultCard').classList.remove('show');
-  document.getElementById('resultLbl').style.display = 'none';
-  document.getElementById('decideBtn').classList.remove('show');
-  selectedCode = '';
+  showPreview('data:image/jpeg;base64,' + capturedBase64);
 }
 
 function openAlbum() { document.getElementById('fileInput').click(); }
 
 function onFileSelected(input) {
   if (!input.files || !input.files[0]) return;
-  var file   = input.files[0];
+  var file = input.files[0];
   capturedMime = file.type || 'image/jpeg';
   var reader = new FileReader();
   reader.onload = function(e) {
     capturedBase64 = e.target.result.split(',')[1];
-    var img = document.getElementById('capturedImg');
-    img.src = e.target.result;
-    img.style.display = 'block';
-    document.getElementById('preview').style.display = 'none';
-    document.getElementById('placeholder').style.display = 'none';
-    document.getElementById('searchBtn').style.display = 'block';
-    document.getElementById('resultCard').classList.remove('show');
-    document.getElementById('resultLbl').style.display = 'none';
-    document.getElementById('decideBtn').classList.remove('show');
-    selectedCode = '';
+    showPreview(e.target.result);
   };
   reader.readAsDataURL(file);
 }
 
-// ── 検索（Gemini APIを直接呼ぶ）────────────────────
+function showPreview(src) {
+  var img = document.getElementById('capturedImg');
+  img.src = src; img.style.display = 'block';
+  document.getElementById('preview').style.display = 'none';
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('searchBtn').style.display = 'block';
+  document.getElementById('analysisCard').classList.remove('show');
+  document.getElementById('gridCard').classList.remove('show');
+  document.getElementById('decideBtn').classList.remove('show');
+  selectedCode = '';
+}
+
+// ── STEP1: Geminiで画像の特徴を分析 ─────────────────
 async function doSearch() {
   if (!capturedBase64) { toast('画像を撮影してください', 'err'); return; }
-  showOv('AIが画像を分析中...\n少々お待ちください');
-  try {
-    // ファイル名一覧をGeminiに渡して候補を絞る
-    var names = fileList.map(function(f) { return f.name; }).join('\n');
-    if (!names) { toast('製品リストが取得できていません', 'err'); hideOv(); return; }
+  showOv('AIが画像の特徴を分析中...\nしばらくお待ちください');
 
+  try {
     var body = {
       contents: [{
         parts: [
           { inline_data: { mime_type: capturedMime, data: capturedBase64 } },
-          { text: 'この画像の製品と似ていると思われる製品コードを以下のリストから5つ以内で選んでください。製品コードのみをカンマ区切りで返してください。他の文字は一切含めないでください。\n\n製品コードリスト:\n' + names }
+          { text: 'この製品画像の特徴を日本語で詳しく説明してください。袋や容器の色、形、ブランド名、製品名、文字、模様など見えるものをすべて箇条書きで教えてください。' }
         ]
       }]
     };
 
     var res  = await fetch(GEMINI_URL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(body)
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
     });
     var json = await res.json();
+    var analysis = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    var text  = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    var codes = text.trim().replace(/\s/g, '').split(',').map(function(c) { return c.trim(); }).filter(function(c) { return c; });
+    if (!analysis) throw new Error('分析結果が取得できませんでした');
 
-    if (codes.length === 0) { toast('候補が見つかりませんでした', 'err'); hideOv(); return; }
+    // 分析結果を表示
+    document.getElementById('analysisText').textContent = analysis;
+    document.getElementById('analysisCard').classList.add('show');
 
-    // 候補の画像をGAS経由で取得
-    var candidates = [];
-    for (var i = 0; i < codes.length; i++) {
-      var code     = codes[i];
-      var fileInfo = fileList.find(function(f) { return f.name === code; });
-      candidates.push({ code: code, fileId: fileInfo ? fileInfo.id : '', name: '' });
-    }
+    // サンプル画像を全件グリッド表示
+    showOv('サンプル画像を読み込み中...');
+    showImageGrid();
 
-    showCandidates(candidates);
   } catch(e) {
     toast('エラー: ' + e.message, 'err');
   }
   hideOv();
 }
 
-// ── 候補表示 ─────────────────────────────────────────
-function showCandidates(candidates) {
-  if (!candidates || candidates.length === 0) {
-    toast('候補が見つかりませんでした', 'err'); return;
-  }
-  var list = document.getElementById('candidateList');
-  list.innerHTML = '';
-  candidates.forEach(function(c) {
-    var div = document.createElement('div');
-    div.className    = 'candidate';
-    div.dataset.code = c.code;
+// ── STEP2: サンプル画像をグリッド表示 ───────────────
+function showImageGrid() {
+  var grid = document.getElementById('imgGrid');
+  grid.innerHTML = '';
 
-    // Drive画像のサムネイル（fileIdがあれば表示）
-    var imgSrc = c.fileId
-      ? 'https://drive.google.com/thumbnail?id=' + c.fileId + '&sz=w120'
-      : '';
-
-    div.innerHTML =
-      '<img class="cand-img" src="' + imgSrc + '" onerror="this.style.display=\'none\'">' +
-      '<div class="cand-info">' +
-        '<div class="cand-code">' + c.code + '</div>' +
-        '<div class="cand-name">' + (c.name || '－') + '</div>' +
-      '</div>' +
-      '<div class="cand-check">✓</div>';
-
-    div.onclick = function() { selectCandidate(c.code); };
-    list.appendChild(div);
+  // 重複を除いたファイル一覧
+  var seen  = {};
+  var files = fileList.filter(function(f) {
+    if (seen[f.name]) return false;
+    seen[f.name] = true; return true;
   });
-  document.getElementById('resultCard').classList.add('show');
-  document.getElementById('resultLbl').style.display = 'block';
+
+  document.getElementById('gridTitle').textContent =
+    'サンプル画像から選んでください（' + files.length + '件）';
+
+  files.forEach(function(f) {
+    var div = document.createElement('div');
+    div.className    = 'grid-item';
+    div.dataset.code = f.name;
+
+    var img = document.createElement('img');
+    img.src = 'https://drive.google.com/thumbnail?id=' + f.id + '&sz=w200';
+    img.onerror = function() { this.style.display = 'none'; };
+
+    var label = document.createElement('div');
+    label.className   = 'grid-code';
+    label.textContent = f.name;
+
+    div.appendChild(img);
+    div.appendChild(label);
+    div.onclick = function() { selectGrid(f.name, div); };
+    grid.appendChild(div);
+  });
+
+  document.getElementById('gridCard').classList.add('show');
 }
 
-function selectCandidate(code) {
+function selectGrid(code, el) {
   selectedCode = code;
-  document.querySelectorAll('.candidate').forEach(function(el) {
-    el.classList.toggle('selected', el.dataset.code === code);
+  document.querySelectorAll('.grid-item').forEach(function(d) {
+    d.classList.remove('selected');
   });
+  el.classList.add('selected');
   document.getElementById('decideBtn').classList.add('show');
   document.getElementById('decideBtn').textContent = '✅ ' + code + ' を入力する';
+  // スクロールして決定ボタンを表示
+  document.getElementById('decideBtn').scrollIntoView({ behavior: 'smooth' });
 }
 
 function decide() {
-  if (!selectedCode) { toast('候補を選択してください', 'err'); return; }
+  if (!selectedCode) { toast('画像を選択してください', 'err'); return; }
   window.location.href = APP_URL + '?code=' + encodeURIComponent(selectedCode);
 }
 
-function showOv(m) { document.getElementById('ovMsg').innerHTML = m; document.getElementById('ov').classList.add('show'); }
+function showOv(m) { document.getElementById('ovMsg').innerHTML = m.replace('\n','<br>'); document.getElementById('ov').classList.add('show'); }
 function hideOv()  { document.getElementById('ov').classList.remove('show'); }
 function toast(msg, type) {
   var el = document.getElementById('toast');
   el.textContent = msg;
   el.className = 'toast show' + (type ? ' ' + type : '');
   clearTimeout(el._t);
-  el._t = setTimeout(function() { el.className = 'toast'; }, 3500);
+  el._t = setTimeout(function() { el.className = 'toast'; }, 4000);
 }
 </script>
 </body>
